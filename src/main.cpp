@@ -14,29 +14,47 @@ void setup() {
     Serial.println("Starting");
 }
 
-int t;
+int t, buttonTime, buttonActive;
 RotaryEncoder::Direction currentDirection;
 
 void loop() {
     encoder.tick();
 
     RotaryEncoder::Direction direction = encoder.getDirection();
+    bool buttonState = digitalRead(ENCODER_PIN_A);
 
-    if (t > 200 || direction != RotaryEncoder::Direction::NOROTATION) {
+    if (direction == RotaryEncoder::Direction::NOROTATION && buttonState) {
+        if (buttonTime > 1) {
+            buttonTime--;
+        } else if (buttonTime == 1) {
+            buttonActive = 2000;
+        }
+        buttonTime = 200;
+    }
+
+    if (t > 300 || direction != RotaryEncoder::Direction::NOROTATION) {
         t = 0;
         if (currentDirection != direction) {
             if (direction == RotaryEncoder::Direction::CLOCKWISE) {
-                if (currentDirection == RotaryEncoder::Direction::COUNTERCLOCKWISE) {
-                    radio.volumeDownStop();
+                if (buttonActive > 0) {
+                    radio.trackUp();
+                } else {
+                    if (currentDirection == RotaryEncoder::Direction::COUNTERCLOCKWISE) {
+                        radio.volumeDownStop();
+                    }
+                    currentDirection = direction;
+                    radio.volumeUpStart();
                 }
-                currentDirection = direction;
-                radio.volumeUpStart();
             } else if (direction == RotaryEncoder::Direction::COUNTERCLOCKWISE) {
-                if (currentDirection == RotaryEncoder::Direction::CLOCKWISE) {
-                    radio.volumeUpStop();
+                if (buttonActive > 0) {
+                    radio.trackDown();
+                } else {
+                    if (currentDirection == RotaryEncoder::Direction::CLOCKWISE) {
+                        radio.volumeUpStop();
+                    }
+                    currentDirection = direction;
+                    radio.volumeDownStart();
                 }
-                currentDirection = direction;
-                radio.volumeDownStart();
             } else {
                 if (currentDirection == RotaryEncoder::Direction::CLOCKWISE) {
                     radio.volumeUpStop();
@@ -47,6 +65,10 @@ void loop() {
                 }
             }
         }
+    }
+
+    if (buttonActive > 0) {
+        buttonActive--;
     }
 
     t++;
